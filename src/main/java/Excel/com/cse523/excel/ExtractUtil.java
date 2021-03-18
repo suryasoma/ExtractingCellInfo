@@ -2,20 +2,46 @@ package Excel.com.cse523.excel;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.Date;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.HashMap;
 
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.hssf.usermodel.HSSFCellStyle;
+import org.apache.poi.hssf.usermodel.HSSFDateUtil;
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.ss.usermodel.BorderStyle;
 import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.DateUtil;
+import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.FormulaEvaluator;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.util.CellAddress;
+import org.apache.poi.xssf.usermodel.XSSFCellStyle;
+import org.apache.poi.xssf.usermodel.XSSFFont;
+import org.apache.poi.xssf.usermodel.XSSFFormulaEvaluator;
+import org.apache.poi.ss.formula.Formula;
+import org.apache.commons.lang3.StringUtils;
 
 public class ExtractUtil {
+	
 	protected static int isNumeric(Cell cell) {
 		if (cell.getCellType() == CellType.NUMERIC) {
+			if(HSSFDateUtil.isCellDateFormatted(cell)) {
+				return 0;
+			}
 			return 1;
 		}
 		return 0;
 	}
 	
-	protected static int isString(Cell cell) {
-		if (cell.getCellType() == CellType.STRING || cell.getCellType() == CellType.BOOLEAN) {
+	protected static int isFormula(Cell cell) {
+		if (cell.getCellType() == CellType.FORMULA) {
 			return 1;
 		}
 		return 0;
@@ -26,10 +52,20 @@ public class ExtractUtil {
 		case STRING:
 			return cell.getStringCellValue().length();
 		case NUMERIC:
-			return String.valueOf(cell.getNumericCellValue()).length();
+			if (DateUtil.isCellDateFormatted(cell)) {
+//                return String.valueOf(cell.getDateCellValue()).length();
+                DateFormat df = new SimpleDateFormat("MM/dd/yyyy");
+                Date date = cell.getDateCellValue();
+                String cellValue = df.format(date);
+                return cellValue.length();
+            } else {
+            	return String.valueOf(cell.getNumericCellValue()).length();
+            }
 		case BOOLEAN:
 			return String.valueOf(cell.getBooleanCellValue()).length();
 		case FORMULA:
+//			EvaluationCell evaluationCell = evalSheet.getCell(cell.getRowIndex(), cell.getColumnIndex());
+//            Ptg[] formulaTokens = evalWorkbook.getFormulaTokens(evaluationCell);
 			return String.valueOf(cell.getCellFormula()).length();
 		default:
 			return 0;
@@ -38,8 +74,11 @@ public class ExtractUtil {
 	
 	protected static int numberOfWords(Cell cell) {
 		switch (cell.getCellType()) {
+		case NUMERIC:
+		case FORMULA:
+			return 0;
 		case STRING:
-			return cell.getStringCellValue().split("\\s+").length;
+			return cell.getStringCellValue().trim().split("\\s").length;
 		default:
 			return 1;
 		}
@@ -52,7 +91,11 @@ public class ExtractUtil {
 			cellValue = cell.getStringCellValue();
 			break;
 		case NUMERIC:
-			cellValue = String.valueOf(cell.getNumericCellValue());
+			if (DateUtil.isCellDateFormatted(cell)) {
+                cellValue = String.valueOf(cell.getDateCellValue());
+            } else {
+            	cellValue = String.valueOf(cell.getNumericCellValue());
+            }
 			break;
 		case BOOLEAN:
 			cellValue = String.valueOf(cell.getBooleanCellValue());
@@ -76,7 +119,7 @@ public class ExtractUtil {
 		return count;
 	}
 	
-	protected static int isForstCharNum(Cell cell) {
+	protected static int isFirstCharNum(Cell cell) {
 		String cellValue = "";
 		switch (cell.getCellType()) {
 		case NUMERIC:
@@ -104,15 +147,6 @@ public class ExtractUtil {
 		return 0; 
 	}
 	
-	protected static int haveAnySpecialCharacters(String word) {
-		String regex = "^[-+_!@#$%^&*.,?]+$";
-		Pattern p = Pattern.compile(regex);
-		Matcher m = p.matcher(word);
-		if(m.matches())
-			return 1;
-		else
-			return 0;
-	}
 	
 	protected static int isFirstCharSpecial(Cell cell) {
 		String cellValue = "";
@@ -121,15 +155,24 @@ public class ExtractUtil {
 			cellValue = cell.getStringCellValue();
 			break;
 		case FORMULA:
-			cellValue = String.valueOf(cell.getCellFormula());
-			break;
+//			cellValue = String.valueOf(cell.getCellFormula());
+//			break;
 		case NUMERIC:
 		case BOOLEAN:
 		default:
 			return 0;
 		}
-		
-		return ExtractUtil.haveAnySpecialCharacters(String.valueOf(cellValue.charAt(0)));
+//		cellValue = cellValue.trim();
+		if(cellValue.length() == 0)
+			return 0;
+		String word = String.valueOf(cellValue.charAt(0));
+		String regex = "[^A-Za-z0-9 ]*";
+		Pattern p = Pattern.compile(regex);
+		Matcher m = p.matcher(word);
+		if(m.matches())
+			return 1;
+		else
+			return 0;
 	}
 	
 	protected static int areWordsCapitalized(Cell cell) {
@@ -172,18 +215,21 @@ public class ExtractUtil {
 		default:
 			return 0;
 		}
-		String regex = "^[A-Z]+$";
-		String[] words = cellValue.split("\\s+");
-		if(words.length == 0)
+		String regex = "[^a-z]*";
+		Pattern p = Pattern.compile(regex);
+		Matcher m = p.matcher(cellValue);
+		if(m.matches())
+			return 1;
+		else
 			return 0;
 		
-		Pattern p = Pattern.compile(regex);
-		for (String word : words) {
-			Matcher m = p.matcher(word);
-			if(!m.matches())
-				return 0;
-		}
-		return 1;
+		
+		/*
+		 * String[] words = cellValue.split("\\s+"); if(words.length == 0) return 0;
+		 * 
+		 * Pattern p = Pattern.compile(regex); for (String word : words) { Matcher m =
+		 * p.matcher(word); if(!m.matches()) return 0; } return 1;
+		 */
 	}
 	
 	protected static int haveAlphaNumericCharacters(Cell cell) {
@@ -201,18 +247,7 @@ public class ExtractUtil {
 		default:
 			return 0;
 		}
-		String regex = "^[a-zA-Z0-9]+$";
-		String[] words = cellValue.split("\\s+");
-		if(words.length == 0)
-			return 0;
-		
-		Pattern p = Pattern.compile(regex);
-		for (String word : words) {
-			Matcher m = p.matcher(word);
-			if(!m.matches())
-				return 0;
-		}
-		return 1;
+	return StringUtils.isAlphanumeric(cellValue) ? 1 : 0;
 	}
 	
 	protected static int haveAnySpecialCharacters(Cell cell) {
@@ -229,15 +264,19 @@ public class ExtractUtil {
 		default:
 			return 0;
 		}
-		String[] words = cellValue.split("\\s+");
-		if(words.length == 0)
-			return 0;
 		
-		for (String word : words) {
-			if(ExtractUtil.haveAnySpecialCharacters(word) == 0)
-				return 0;
-		}
-		return 1;
+		Pattern p = Pattern.compile("[^a-z0-9 ]", Pattern.CASE_INSENSITIVE);
+		Matcher m = p.matcher(cellValue);
+		if(m.find())
+			return 1;
+		else
+			return 0;
+		/*
+		 * String[] words = cellValue.split("\\s+"); if(words.length == 0) return 0;
+		 * 
+		 * for (String word : words) { if(ExtractUtil.haveAnySpecialCharacters(word) ==
+		 * 0) return 0; } return 1;
+		 */
 	}
 	
 	protected static int hasColon(Cell cell) {
@@ -255,8 +294,8 @@ public class ExtractUtil {
 			return 0;
 		}
 		
-		String[] words = cellValue.split(":");
-		if(words.length > 1)
+		int index = cellValue.indexOf(":");
+		if(index >= 0)
 			return 1;
 		else
 			return 0;
@@ -277,10 +316,12 @@ public class ExtractUtil {
 			return 0;
 		}
 		
-		String[] words = cellValue.split("!");
-		if(words.length > 1)
+		Pattern p = Pattern.compile("[.,;!?\"()]");
+		Matcher m = p.matcher(cellValue);
+		if(m.find()) {
 			return 1;
-		else
+		}
+		else 
 			return 0;
 	}
 	
@@ -297,11 +338,12 @@ public class ExtractUtil {
 			return 0;
 		}
 		
-		String[] words = cellValue.split("total");
-		if(words.length > 1)
+		String regex = ".*\\b" + Pattern.quote("total") + "\\b.*"; // \b is a word boundary
+		if(cellValue.toLowerCase().matches(regex)) {
 			return 1;
-		else
+		} else {
 			return 0;
+		}
 	}
 	
 	protected static int hasWordTable(Cell cell) {
@@ -317,10 +359,245 @@ public class ExtractUtil {
 			return 0;
 		}
 		
-		String[] words = cellValue.split("table");
-		if(words.length > 1)
+		String regex = ".*\\b" + Pattern.quote("table") + "\\b.*"; // \b is a word boundary
+		if(cellValue.toLowerCase().matches(regex)) {
 			return 1;
-		else
+		} else {
 			return 0;
+		}
+	}
+	
+	protected static int inYearRange(Cell cell) {
+		switch (cell.getCellType()) {
+		case NUMERIC:
+			if (DateUtil.isCellDateFormatted(cell)) {
+                return 1;
+            }
+			Integer cellValue = Double.valueOf(cell.getNumericCellValue()).intValue();
+			if(cellValue >= 1970 && cellValue <= 2099)
+				return 1;
+			else
+				return 0;
+		case STRING:
+		case FORMULA:
+		case BOOLEAN:
+		default:
+			return 0;
+		}
+	}
+	
+	protected static int isAggregateFormulaUsed(Cell cell) {
+		if(cell.getCellType() == CellType.FORMULA && cell.getCellFormula().contains("SUM")) {
+			return 1;
+		}
+		return 0;
+	}
+	
+	protected static int firstRowNumer(Cell cell) {
+		return cell.getRowIndex();
+	}
+	
+	protected static int firstColumnNumber(Cell cell) {
+		return cell.getColumnIndex();
+	}
+	
+	protected static String getHorizontalAlignment(Cell cell) {
+		String retValue = "0,0,0,0";
+		CellStyle cellStyle = cell.getCellStyle();
+		switch(cellStyle.getAlignment()) {
+		case LEFT:
+			retValue = "1,0,0,0";
+			break;
+		case CENTER:
+			retValue = "0,1,0,0";
+			break;
+		case RIGHT:
+			retValue = "0,0,1,0";
+			break;
+		case GENERAL:
+			retValue = "0,0,0,1";
+			break;
+		}
+		return retValue;
+	}
+	
+	protected static String getVericalAlignment(Cell cell) {
+		String retValue = "0,0,0";
+		CellStyle cellStyle = cell.getCellStyle();
+		switch(cellStyle.getVerticalAlignment()) {
+		case TOP:
+			retValue = "1,0,0";
+			break;
+		case CENTER:
+			retValue = "0,1,0";
+			break;
+		case BOTTOM:
+			retValue = "0,0,1";
+			break;
+		}
+		return retValue;
+	}
+	
+	protected static int getIndentation(Cell cell) {
+		return cell.getCellStyle().getIndention();
+	}
+	
+	protected static int isDefaultFillPattern(Cell cell) {
+		return cell.getCellStyle().getFillPattern() == FillPatternType.NO_FILL ? 1 : 0;
+	}
+	
+	protected static int isTextWrapped(Cell cell) {
+		return cell.getCellStyle().getWrapText() ? 1 : 0;
+	}
+	
+	protected static int getCellSize(Cell cell, HashMap<CellAddress, Integer> mergedCellsSize) {
+		if(mergedCellsSize.containsKey(cell.getAddress())) {
+			return mergedCellsSize.get(cell.getAddress());
+		}
+		return 1;
+	}
+	
+	protected static int hasNoTopBorder(Cell cell) {
+		return cell.getCellStyle().getBorderTop() == BorderStyle.NONE ? 1 : 0;
+	}
+	
+	protected static int hasThinTopBorder(Cell cell) {
+		return cell.getCellStyle().getBorderTop() == BorderStyle.THIN ? 1 : 0;
+	}
+	
+	protected static int hasNoBottomBorder(Cell cell) {
+		return cell.getCellStyle().getBorderBottom() == BorderStyle.NONE ? 1 : 0;
+	}
+	
+	protected static int hasNoLeftBorder(Cell cell) {
+		return cell.getCellStyle().getBorderLeft() == BorderStyle.NONE ? 1 : 0;
+	}
+	
+	protected static int hasNoRightBorder(Cell cell) {
+		return cell.getCellStyle().getBorderRight() == BorderStyle.NONE ? 1 : 0;
+	}
+	
+	protected static int hasMediumRightBorder(Cell cell) {
+		return cell.getCellStyle().getBorderRight() == BorderStyle.MEDIUM ? 1 : 0;
+	}
+	
+	protected static int getNumberOfBorders(Cell cell) {
+		int count = 0;
+		if(cell.getCellStyle().getBorderTop() != BorderStyle.NONE)
+			count+=1;
+		if(cell.getCellStyle().getBorderBottom() != BorderStyle.NONE)
+			count+=1;
+		if(cell.getCellStyle().getBorderRight() != BorderStyle.NONE)
+			count+=1;
+		if(cell.getCellStyle().getBorderLeft() != BorderStyle.NONE)
+			count+=1;
+		return count;
+	}
+	
+	protected static int getFontSize(Cell cell, Workbook wb) {
+		CellStyle cellStyle = (CellStyle)cell.getCellStyle();
+		if(cellStyle instanceof XSSFCellStyle)
+			return ((XSSFCellStyle)cellStyle).getFont().getFontHeightInPoints();
+		if(cellStyle instanceof HSSFCellStyle)
+			return ((HSSFCellStyle)cellStyle).getFont(wb).getFontHeightInPoints();
+		return 0;
+	}
+	
+	protected static int isFontColorDefault(Cell cell, Workbook wb) {
+		CellStyle cellStyle = (CellStyle)cell.getCellStyle();
+		if(cellStyle instanceof XSSFCellStyle)
+			return ((XSSFCellStyle)cellStyle).getFont().getColor() == XSSFFont.DEFAULT_FONT_COLOR ? 1 : 0;
+		if(cellStyle instanceof HSSFCellStyle)
+			return ((HSSFCellStyle)cellStyle).getFont(wb).getColor() == XSSFFont.DEFAULT_FONT_COLOR ? 1 : 0;
+		return 0;
+	}
+	
+	protected static int isBold(Cell cell, Workbook wb) {
+		CellStyle cellStyle = (CellStyle)cell.getCellStyle();
+		if(cellStyle instanceof XSSFCellStyle)
+			return ((XSSFCellStyle)cellStyle).getFont().getBold() ? 1 : 0;
+		if(cellStyle instanceof HSSFCellStyle)
+			return ((HSSFCellStyle)cellStyle).getFont(wb).getBold() ? 1 : 0;
+		return 0;
+	}
+	
+	protected static int isSingleUnderlined(Cell cell, Workbook wb) {
+		CellStyle cellStyle = (CellStyle)cell.getCellStyle();
+		if(cellStyle instanceof XSSFCellStyle)
+			return ((XSSFCellStyle)cellStyle).getFont().getUnderline() == Font.SS_NONE ? 1 : 0;
+		if(cellStyle instanceof HSSFCellStyle)
+			return ((HSSFCellStyle)cellStyle).getFont(wb).getUnderline() == Font.SS_NONE ? 1 : 0;
+		return 0;
+	}
+	
+	private static String getStringWithTrimmedText(Cell cell) {
+		switch (cell.getCellType()) {
+		case STRING:
+			return cell.getStringCellValue().trim();
+		case NUMERIC:
+			if (DateUtil.isCellDateFormatted(cell)) {
+                DateFormat df = new SimpleDateFormat("MM/dd/yyyy");
+                Date date = cell.getDateCellValue();
+                String cellValue = df.format(date);
+                return cellValue.trim();
+            } else {
+            	return String.valueOf(cell.getNumericCellValue()).trim();
+            }
+		case BOOLEAN:
+			return String.valueOf(cell.getBooleanCellValue()).trim();
+		case FORMULA:
+			return String.valueOf(cell.getCellFormula()).trim();
+		default:
+			return "";
+		}
+	}
+	
+	protected static String numberOfNeighbours(Sheet sheet, Cell cell) {
+		int rowNumber = cell.getRowIndex();
+		int columnIndex = cell.getColumnIndex();
+		
+		Row row = sheet.getRow(rowNumber);
+		int count = 0;
+		if(columnIndex > 0 && row.getCell(columnIndex-1) != null && row.getCell(columnIndex-1).getCellType() != CellType.BLANK &&
+				getStringWithTrimmedText(row.getCell(columnIndex-1)).length() > 0) {
+			count += 1;
+		}
+		if(row.getCell(columnIndex+1) != null && row.getCell(columnIndex+1).getCellType() != CellType.BLANK &&
+				getStringWithTrimmedText(row.getCell(columnIndex+1)).length() > 0)
+			count += 1;
+		if(rowNumber > 0) {
+			row = sheet.getRow(rowNumber - 1);
+			if(row != null && row.getCell(columnIndex) != null && row.getCell(columnIndex).getCellType() != CellType.BLANK &&
+					getStringWithTrimmedText(row.getCell(columnIndex)).length() > 0)
+				count+=1;
+		}
+		row = sheet.getRow(rowNumber + 1);
+		if(row != null && row.getCell(columnIndex) != null && row.getCell(columnIndex).getCellType() != CellType.BLANK &&
+				getStringWithTrimmedText(row.getCell(columnIndex)).length() > 0)
+			count+=1;
+		
+		switch(count) {
+		case 1:
+			return "0,1,0,0,0";
+		case 2:
+			return "0,0,1,0,0";
+		case 3:
+			return "0,0,0,1,0";
+		case 4:
+			return "0,0,0,0,1";
+		default:
+			return "1,0,0,0,0";
+		}
+	}
+	
+	protected static int isReferenceFormulaValueNumeric(FormulaEvaluator formulaEvaluator, Cell cell) {
+		if(cell.getCellType() == CellType.FORMULA) {
+			try {
+				return formulaEvaluator.evaluateFormulaCell(cell) == CellType.NUMERIC ? 1 : 0;
+			} catch(Exception e) {
+				return 0;
+			}
+		}
+		return 0;
 	}
 }
