@@ -80,7 +80,19 @@ public class ExtractCellInfo {
 		requiredInfo += "font_size,";
 		requiredInfo += "is_default_font_color,";
 		requiredInfo += "is_bold,";
-		requiredInfo += "is_single_underlined";
+		requiredInfo += "is_single_underlined,";
+		requiredInfo += "matches_top_type,";
+		requiredInfo += "matches_bottom_type,";
+		requiredInfo += "matches_left_type,";
+		requiredInfo += "matches_right_type,";
+		requiredInfo += "matches_top_style,";
+		requiredInfo += "matches_bottom_style,";
+		requiredInfo += "matches_left_style,";
+		requiredInfo += "matches_right_style,";
+		requiredInfo += "top_neighbor_type,";
+		requiredInfo += "bottom_neighbor_type,";
+		requiredInfo += "left_neighbor_type,";
+		requiredInfo += "right_neighbor_type";
 		//System.out.println(requiredInfo);
 		csvWriter.append(requiredInfo);
 		csvWriter.append("\n");
@@ -168,7 +180,7 @@ public class ExtractCellInfo {
 		                    requiredInfo += ExtractUtil.isReferenceFormulaValueNumeric(formulaEvaluator, cell) + ",";//is reference formula value type numeric
 		                    requiredInfo += ExtractUtil.firstRowNumer(cell) + ",";//first row number
 		                    requiredInfo += ExtractUtil.firstColumnNumber(cell) + ",";//first column number
-		                    requiredInfo += ExtractUtil.numberOfNeighbours(sheet, cell) + ",";//number of neighbors
+		                    requiredInfo += NeighbourUtil.numberOfNeighbours(sheet, cell) + ",";//number of neighbors
 		                    requiredInfo += ExtractUtil.getHorizontalAlignment(cell) + ",";//get horizontal alignment
 		                    requiredInfo += ExtractUtil.getVericalAlignment(cell) + ",";//get vertical alignment
 		                    requiredInfo += ExtractUtil.getIndentation(cell) + ",";//get vertical alignment
@@ -185,7 +197,11 @@ public class ExtractCellInfo {
 		                    requiredInfo += ExtractUtil.getFontSize(cell, workbook) + ",";//font height
 		                    requiredInfo += ExtractUtil.isFontColorDefault(cell, workbook) + ",";//font color default
 		                    requiredInfo += ExtractUtil.isBold(cell, workbook) + ",";//is bold
-		                    requiredInfo += ExtractUtil.isSingleUnderlined(cell, workbook);//id underlined
+		                    requiredInfo += ExtractUtil.isSingleUnderlined(cell, workbook)+ ",";//id underlined
+							requiredInfo += NeighbourUtil.checkNeighbourType(sheet, cell)+","; //get if neighbour type matches
+							requiredInfo += NeighbourUtil.checkNeighbourStyle(sheet, cell) + ","; //get if neighbour type matches
+							requiredInfo += NeighbourUtil.getNeighbourType(sheet, cell);
+
 		                    //System.out.println(requiredInfo);
 		            		csvWriter.append(requiredInfo);
 		            		csvWriter.append("\n");

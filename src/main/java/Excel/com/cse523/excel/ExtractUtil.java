@@ -530,7 +530,7 @@ public class ExtractUtil {
 		return 0;
 	}
 	
-	private static String getStringWithTrimmedText(Cell cell) {
+	protected static String getStringWithTrimmedText(Cell cell) {
 		switch (cell.getCellType()) {
 		case STRING:
 			return cell.getStringCellValue().trim();
@@ -552,44 +552,6 @@ public class ExtractUtil {
 		}
 	}
 	
-	protected static String numberOfNeighbours(Sheet sheet, Cell cell) {
-		int rowNumber = cell.getRowIndex();
-		int columnIndex = cell.getColumnIndex();
-		
-		Row row = sheet.getRow(rowNumber);
-		int count = 0;
-		if(columnIndex > 0 && row.getCell(columnIndex-1) != null && row.getCell(columnIndex-1).getCellType() != CellType.BLANK &&
-				getStringWithTrimmedText(row.getCell(columnIndex-1)).length() > 0) {
-			count += 1;
-		}
-		if(row.getCell(columnIndex+1) != null && row.getCell(columnIndex+1).getCellType() != CellType.BLANK &&
-				getStringWithTrimmedText(row.getCell(columnIndex+1)).length() > 0)
-			count += 1;
-		if(rowNumber > 0) {
-			row = sheet.getRow(rowNumber - 1);
-			if(row != null && row.getCell(columnIndex) != null && row.getCell(columnIndex).getCellType() != CellType.BLANK &&
-					getStringWithTrimmedText(row.getCell(columnIndex)).length() > 0)
-				count+=1;
-		}
-		row = sheet.getRow(rowNumber + 1);
-		if(row != null && row.getCell(columnIndex) != null && row.getCell(columnIndex).getCellType() != CellType.BLANK &&
-				getStringWithTrimmedText(row.getCell(columnIndex)).length() > 0)
-			count+=1;
-		
-		switch(count) {
-		case 1:
-			return "0,1,0,0,0";
-		case 2:
-			return "0,0,1,0,0";
-		case 3:
-			return "0,0,0,1,0";
-		case 4:
-			return "0,0,0,0,1";
-		default:
-			return "1,0,0,0,0";
-		}
-	}
-	
 	protected static int isReferenceFormulaValueNumeric(FormulaEvaluator formulaEvaluator, Cell cell) {
 		if(cell.getCellType() == CellType.FORMULA) {
 			try {
@@ -600,4 +562,6 @@ public class ExtractUtil {
 		}
 		return 0;
 	}
+
+
 }
